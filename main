@@ -1,0 +1,109 @@
+from model import NeuralNetwork
+import torch
+import torchvision
+from matplotlib import pyplot as plt
+
+
+if __name__ == "__main__":
+    
+    #modelul
+    model = NeuralNetwork()
+
+    #loss function
+    loss = torch.nn.NLLLoss()
+
+    #hyperparametri
+    lr = 0.03
+    epochs = 10
+
+
+    #optimizare
+    optimizer = torch.optim.SGD(model.parameters(), lr)
+
+    #transforms
+    transforms = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
+
+    #training loop
+    dataset_train = torchvision.datasets.MNIST("./files/", train = True, download = True, transform = transforms)
+    dataset_validare = torchvision.datasets.MNIST("./files", train = False, download = True, transform = transforms)
+
+
+    #datalaoder
+    dataloader_train = torch.utils.data.DataLoader(dataset_train, shuffle = True, batch_size = 32)
+    dataloader_validation = torch.utils.data.DataLoader(dataset_validare, shuffle = False, batch_size = 1)
+    
+    errors_train = []
+    errors_validation =[]
+    #training
+    for epoch in range(epochs):
+        #print(epoch)
+        errors_temp = []
+        model.train()
+        for image, label in dataloader_train:
+
+            #flat
+            image = image.view(32, 784)
+
+            # curatare gradienti
+            optimizer.zero_grad()
+
+            #pred
+            pred = model(image)
+           
+            #calcul eroare
+            error = loss(pred, label)
+           # print(error)
+            errors_temp.append(error.item())
+
+            #gradienti
+            error.backward()
+
+            #actualizare
+            optimizer.step()
+
+
+
+        model.eval()
+        with torch.no_grad():
+            acc = []
+            for images, labels in dataloader_validation:
+                images = images.view(images.shape[0], -1)
+                test_output = model(images)
+                pred_y = torch.max(test_output, 1)[1].data.squeeze()
+                accuracy = (pred_y == labels).sum().item()
+                acc.append(accuracy)
+        print(f'Acuratete: {(sum(acc)/len(acc)*100)}')
+
+
+         #VALIDATION   
+        errors_temp_validation = []
+        model.eval()
+        for image, label in dataloader_validation:
+
+            #flat
+            image = image.view(1, 784)
+
+            #pred
+            pred = model(image)
+           
+            #calcul eroare
+            error = loss(pred, label)
+           # print(error)
+            errors_temp_validation.append(error.item())
+
+        
+        eroare_medie_per_epoca = sum(errors_temp)/len(errors_temp)
+        eroare_medie_per_epoca_valid = sum(errors_temp_validation)/len(errors_temp_validation)
+
+
+        errors_train.append(eroare_medie_per_epoca)
+        errors_validation.append(eroare_medie_per_epoca_valid)
+
+        print(f"eroare per {epoch} : {eroare_medie_per_epoca} eroare per epoca valid:{eroare_medie_per_epoca_valid}")
+
+    plt.plot(errors_validation, label = 'Error Valid')
+    plt.plot(errors_train, label = 'Error train')
+    plt.legend()
+    plt.show()
+
+
